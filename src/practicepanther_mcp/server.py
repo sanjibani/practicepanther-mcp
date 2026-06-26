@@ -21,26 +21,47 @@ import json
 import sys
 from typing import Any
 
+import structlog
 from mcp.server.fastmcp import FastMCP
 
-from .client import (
+from .client import PracticePantherClient
+from .exceptions import (
     PracticePantherAPIError,
     PracticePantherAuthError,
-    PracticePantherClient,
+    PracticePantherConnectionError,
     PracticePantherError,
+    PracticePantherNotFoundError,
+    PracticePantherRateLimitError,
+    PracticePantherRefreshTokenExpiredError,
 )
+
+log = structlog.get_logger(__name__)
 
 
 def _format_error(e: Exception) -> str:
+    if isinstance(e, PracticePantherRefreshTokenExpiredError):
+        return (
+            "PracticePanther refresh token expired or revoked. Run "
+            "`practicepanther-mcp-auth --client-id <id> --client-secret <secret>` "
+            "to obtain a new one."
+        )
     if isinstance(e, PracticePantherAuthError):
         return (
             "Authentication failed against PracticePanther. Run "
             "`practicepanther-mcp-auth` to refresh your tokens, or check "
-            f"PRACTICEPANTHER_ACCESS_TOKEN / PRACTICEPANTHER_REFRESH_TOKEN / "
-            f"PRACTICEPANTHER_CLIENT_ID / PRACTICEPANTHER_CLIENT_SECRET. Details: {e}"
+            "PRACTICEPANTHER_ACCESS_TOKEN / PRACTICEPANTHER_REFRESH_TOKEN / "
+            "PRACTICEPANTHER_CLIENT_ID / PRACTICEPANTHER_CLIENT_SECRET."
         )
+    if isinstance(e, PracticePantherNotFoundError):
+        return f"Resource not found: {e}"
+    if isinstance(e, PracticePantherRateLimitError):
+        wait = f" Retry in {e.retry_after}s." if e.retry_after else ""
+        return f"PracticePanther rate limit hit.{wait} Slow down."
+    if isinstance(e, PracticePantherConnectionError):
+        return f"Network failure talking to PracticePanther: {e}"
     if isinstance(e, PracticePantherAPIError):
-        return f"PracticePanther API error (HTTP {e.status_code}): {e}"
+        request_id = f" (request_id: {e.request_id})" if e.request_id else ""
+        return f"PracticePanther API error (HTTP {e.http_status}){request_id}: {e}"
     if isinstance(e, PracticePantherError):
         return f"PracticePanther error: {e}"
     return f"Unexpected error: {e!r}"
@@ -91,7 +112,7 @@ async def find_matters(
             practice_area_id=practice_area_id,
             responsible_attorney_id=responsible_attorney_id,
             top=top, skip=skip, orderby=orderby,
-            filter=odata_filter, select=select,
+            odata_filter=odata_filter, select=select,
         ))
     except PracticePantherError as e:
         return _format_error(e)
@@ -153,7 +174,7 @@ async def find_accounts(
     try:
         return _json(await _client().find_accounts(
             name=name, email=email, top=top, skip=skip,
-            orderby=orderby, filter=odata_filter,
+            orderby=orderby, odata_filter=odata_filter,
         ))
     except PracticePantherError as e:
         return _format_error(e)
@@ -482,7 +503,7 @@ def main() -> None:
     try:
         mcp.run()
     except PracticePantherAuthError as e:
-        print(f"[practicepanther-mcp] {e}", file=sys.stderr)
+        log.error("server.auth_failed_on_start", error=str(e))
         sys.exit(1)
 
 

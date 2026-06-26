@@ -23,7 +23,6 @@ from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
 
-
 AUTHORIZE_PATH = "/oauth/authorize"
 TOKEN_PATH = "/oauth/token"
 DEFAULT_PORT = 8765
@@ -68,22 +67,25 @@ def main() -> int:
     auth_code_holder: dict[str, str] = {}
 
     class CallbackHandler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:  # noqa: N802
+        def do_GET(self) -> None:
             parsed = urlparse(self.path)
             if parsed.path != "/callback":
                 self.send_response(404)
                 self.end_headers()
                 return
             qs = parse_qs(parsed.query)
-            code = (qs.get("code") or [None])[0]
-            err = (qs.get("error") or [None])[0]
+            code_list = qs.get("code")
+            code = code_list[0] if code_list else None
+            err_list = qs.get("error")
+            err = err_list[0] if err_list else None
             if err:
                 self.send_response(400)
                 self.send_header("Content-Type", "text/html")
                 self.end_headers()
+                err_desc = qs.get("error_description", [""])
+                desc = err_desc[0] if err_desc else ""
                 self.wfile.write(
-                    f"<h1>OAuth error</h1><p>{err}: {qs.get('error_description', [''])[0]}</p>"
-                    .encode()
+                    f"<h1>OAuth error</h1><p>{err}: {desc}</p>".encode()
                 )
                 auth_code_holder["error"] = err
                 return
@@ -101,7 +103,7 @@ def main() -> int:
                 b"<h1>Authenticated.</h1><p>You can close this tab and return to the terminal.</p>"
             )
 
-        def log_message(self, fmt: str, *fmt_args: object) -> None:  # silence default logs
+        def log_message(self, _format: str, *_args: object) -> None:  # silence default logs
             return
 
     server = HTTPServer(("127.0.0.1", args.redirect_port), CallbackHandler)
@@ -115,7 +117,10 @@ def main() -> int:
         except Exception as exc:
             print(f"Could not auto-open browser ({exc}). Visit the URL above.", file=sys.stderr)
 
-    print(f"Waiting for redirect on http://localhost:{args.redirect_port}/callback ...", file=sys.stderr)
+    print(
+        f"Waiting for redirect on http://localhost:{args.redirect_port}/callback ...",
+        file=sys.stderr,
+    )
     while "code" not in auth_code_holder and "error" not in auth_code_holder:
         server.handle_request()
     server.server_close()

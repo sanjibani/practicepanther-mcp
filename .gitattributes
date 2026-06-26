@@ -1,0 +1,23 @@
+# Auto-detect text files, normalize line endings to LF on commit.
+* text=auto eol=lf
+
+# Mark binary files explicitly (prevents diffs from trying to "fix" line endings).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# Exclude dev / CI artifacts from sdist/wheel.
+.github/ export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+.editorconfig export-ignore
+.pre-commit-config.yaml export-ignore
+.ruff_cache/ export-ignore
+.pytest_cache/ export-ignore
+tests/ export-ignore
+*.pyc export-ignore
