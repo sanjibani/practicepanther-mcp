@@ -1,14 +1,14 @@
 [project]
 name = "practicepanther_mcp"
 version = "0.1.0"
-description = "<DESCRIPTION>"
+description = "MCP server for PracticePanther — legal practice management (matters, accounts, time entries, invoices)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
     { name = "Sanjibani Choudhury", email = "schoudhury1991@gmail.com" },
 ]
-keywords = ["mcp", "model-context-protocol", "practicepanther_mcp"]
+keywords = ["mcp", "model-context-protocol", "practicepanther", "legal", "law-firm", "practice-management"]
 
 dependencies = [
     "mcp[cli]>=1.0.0",
@@ -16,8 +16,16 @@ dependencies = [
     "pydantic>=2.5.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.6.0",
+]
+
 [project.scripts]
 practicepanther_mcp = "practicepanther_mcp.server:main"
+practicepanther-mcp-auth = "practicepanther_mcp.auth:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -29,6 +37,7 @@ packages = ["src/practicepanther_mcp"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 100
