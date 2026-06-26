@@ -8,6 +8,7 @@ verifies real request URLs, headers, and bodies.
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -16,6 +17,7 @@ import pytest
 import respx
 from hypothesis import given, settings
 from hypothesis import strategies as st
+from mcp.server.fastmcp.exceptions import ToolError
 
 from practicepanther_mcp import (
     PracticePantherAPIError,
@@ -26,6 +28,7 @@ from practicepanther_mcp import (
     PracticePantherRateLimitError,
     PracticePantherRefreshTokenExpiredError,
 )
+from practicepanther_mcp import server as _pp_server
 from practicepanther_mcp.exceptions import (
     OAUTH_INVALID_GRANT,
     OAUTH_INVALID_REFRESH,
@@ -404,3 +407,67 @@ def test_error_repr_includes_structured_fields() -> None:
     assert "http_status=500" in r
     assert "error_code='oops'" in r
     assert "request_id='req-1'" in r
+
+
+# --- Security regression: tools must raise (not return string) so FastMCP ---
+# sets isError=true on the response. The Blackwell Systems audit
+# (https://arxiv.org/abs/2508.14925 + https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks)
+# flagged this exact bug: 9 of 25 servers crash and return plain strings
+# without isError, so AI agents can't distinguish failures from data.
+#
+# This test calls the FastMCP-wrapped tool directly and asserts on the
+# raw CallToolResult it produces.
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_tool_error_sets_iserror_true() -> None:
+    """When a tool encounters an upstream error, FastMCP must see isError=True.
+
+    The Blackwell Systems audit (https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks
+    + MCPTox benchmark arXiv:2508.14925) flagged this exact bug: 9 of 25
+    audited servers crash and return plain strings without isError, so AI
+    agents can't distinguish failures from data. We verify our tools do
+    NOT regress to that pattern.
+
+    We invoke the FastMCP server in-process, call list_users against a
+    mock that always returns 401, and assert:
+    1. The tool raises (FastMCP converts to CallToolResult with isError=True)
+    2. The helpful message is included as TextContent for the agent
+    """
+    # Pre-mint a token so the OAuth refresh path is skipped on first request
+    os.environ["PRACTICEPANTHER_ACCESS_TOKEN"] = "pre-minted"
+    os.environ["PRACTICEPANTHER_REFRESH_TOKEN"] = "refresh-tok"
+    os.environ["PRACTICEPANTHER_CLIENT_ID"] = "client-id"
+    os.environ["PRACTICEPANTHER_CLIENT_SECRET"] = "client-secret"
+
+    # Mock the failing API call — both attempts (initial + post-refresh) return 401
+    respx.post("https://app.practicepanther.com/oauth/token").mock(
+        return_value=httpx.Response(200, json={"access_token": "tok-2", "refresh_token": "ref-2"})
+    )
+    respx.get("https://app.practicepanther.com/api/v2/users").mock(
+        return_value=httpx.Response(401, text="")
+    )
+
+    # Invoke the FastMCP server in-process. FastMCP wraps any exception
+    # raised by the tool in a ToolError before propagating, then converts
+    # it to a CallToolResult with isError=true over the wire.
+
+    with pytest.raises(ToolError) as exc_info:
+        await _pp_server.mcp.call_tool("list_users", {})
+
+    # Critical assertion: the wrapped ToolError's message preserves our
+    # typed exception's message (with the helpful hint). This proves our
+    # tool raised an exception instead of returning a string — which is
+    # what triggers FastMCP's isError=true path. If we had returned the
+    # error string instead, no exception would be raised and isError
+    # would be false — the bug Blackwell's audit flagged.
+    msg = str(exc_info.value)
+    assert "PracticePanther rejected the request" in msg, (
+        f"Expected the auth hint in the error; got: {msg!r}. "
+        "Returning error strings as plain content (the OLD pattern) loses "
+        "isError=true and the agent can't tell the tool failed."
+    )
+    assert "practicepanther-mcp-auth" in msg, (
+        "The hint about running practicepanther-mcp-auth should reach the agent."
+    )

@@ -67,6 +67,8 @@ def _format_error(e: Exception) -> str:
     return f"Unexpected error: {e!r}"
 
 
+
+
 def _json(data: Any) -> str:
     return json.dumps(data, indent=2, default=str, ensure_ascii=False)
 
@@ -114,8 +116,8 @@ async def find_matters(
             top=top, skip=skip, orderby=orderby,
             odata_filter=odata_filter, select=select,
         ))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -123,8 +125,8 @@ async def get_matter(matter_id: int) -> str:
     """Fetch a single matter with full detail (parties, practice area, status, etc.)."""
     try:
         return _json(await _client().get_matter(matter_id))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -139,8 +141,8 @@ async def create_matter(matter_json: str) -> str:
         return _json(await _client().create_matter(data))
     except json.JSONDecodeError as e:
         return f"Invalid JSON in matter_json: {e}"
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -154,8 +156,8 @@ async def update_matter(matter_id: int, updates_json: str) -> str:
         return _json(await _client().update_matter(matter_id, updates))
     except json.JSONDecodeError as e:
         return f"Invalid JSON in updates_json: {e}"
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 # ----- Account (client) tools ----------------------------------------------
@@ -176,8 +178,8 @@ async def find_accounts(
             name=name, email=email, top=top, skip=skip,
             orderby=orderby, odata_filter=odata_filter,
         ))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -185,8 +187,8 @@ async def get_account(account_id: int) -> str:
     """Fetch a single client account with full detail."""
     try:
         return _json(await _client().get_account(account_id))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -200,8 +202,8 @@ async def create_account(account_json: str) -> str:
         return _json(await _client().create_account(data))
     except json.JSONDecodeError as e:
         return f"Invalid JSON in account_json: {e}"
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 # ----- Contact tools --------------------------------------------------------
@@ -222,8 +224,8 @@ async def find_contacts(
             account_id=account_id, first_name=first_name, last_name=last_name,
             email=email, top=top, skip=skip,
         ))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -236,8 +238,8 @@ async def create_contact(contact_json: str) -> str:
         return _json(await _client().create_contact(data))
     except json.JSONDecodeError as e:
         return f"Invalid JSON in contact_json: {e}"
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 # ----- Time-entry tools (the killer feature) -------------------------------
@@ -263,8 +265,8 @@ async def find_time_entries(
             start_date=start_date, end_date=end_date, billable=billable,
             top=top, skip=skip, orderby=orderby,
         ))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -272,8 +274,8 @@ async def get_time_entry(time_entry_id: int) -> str:
     """Fetch a single time entry."""
     try:
         return _json(await _client().get_time_entry(time_entry_id))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -289,8 +291,8 @@ async def create_time_entry(entry_json: str) -> str:
         return _json(await _client().create_time_entry(data))
     except json.JSONDecodeError as e:
         return f"Invalid JSON in entry_json: {e}"
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -303,8 +305,8 @@ async def update_time_entry(time_entry_id: int, updates_json: str) -> str:
         return _json(await _client().update_time_entry(time_entry_id, updates))
     except json.JSONDecodeError as e:
         return f"Invalid JSON in updates_json: {e}"
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 # ----- Invoice tools --------------------------------------------------------
@@ -329,8 +331,8 @@ async def find_invoices(
             start_date=start_date, end_date=end_date,
             top=top, skip=skip, orderby=orderby,
         ))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -338,8 +340,8 @@ async def get_invoice(invoice_id: int) -> str:
     """Fetch a single invoice with line items."""
     try:
         return _json(await _client().get_invoice(invoice_id))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -352,8 +354,8 @@ async def create_invoice(invoice_json: str) -> str:
         return _json(await _client().create_invoice(data))
     except json.JSONDecodeError as e:
         return f"Invalid JSON in invoice_json: {e}"
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 # ----- Activity / task / event tools ---------------------------------------
@@ -373,8 +375,8 @@ async def find_activities(
             matter_id=matter_id, account_id=account_id,
             activity_type=activity_type, top=top, skip=skip,
         ))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -387,8 +389,8 @@ async def create_activity(activity_json: str) -> str:
         return _json(await _client().create_activity(data))
     except json.JSONDecodeError as e:
         return f"Invalid JSON in activity_json: {e}"
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -405,8 +407,8 @@ async def find_tasks(
             matter_id=matter_id, assignee_id=assignee_id,
             status=status, top=top, skip=skip,
         ))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -419,8 +421,8 @@ async def create_task(task_json: str) -> str:
         return _json(await _client().create_task(data))
     except json.JSONDecodeError as e:
         return f"Invalid JSON in task_json: {e}"
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -439,8 +441,8 @@ async def find_events(
             start_date=start_date, end_date=end_date,
             top=top, skip=skip,
         ))
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -453,8 +455,8 @@ async def create_event(event_json: str) -> str:
         return _json(await _client().create_event(data))
     except json.JSONDecodeError as e:
         return f"Invalid JSON in event_json: {e}"
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 # ----- Reference / diagnostic -----------------------------------------------
@@ -466,8 +468,8 @@ async def list_users() -> str:
     ``responsible_attorney_id``, ``user_id``, ``assignee_id`` in other tools."""
     try:
         return _json(await _client().list_users())
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -475,8 +477,8 @@ async def list_practice_areas() -> str:
     """List practice areas defined for the firm (e.g. Family Law, Personal Injury)."""
     try:
         return _json(await _client().list_practice_areas())
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -484,8 +486,8 @@ async def list_expense_categories() -> str:
     """List expense categories (Filing Fees, Travel, Copying, etc.)."""
     try:
         return _json(await _client().list_expense_categories())
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 @mcp.tool()
@@ -495,8 +497,8 @@ async def health_check() -> str:
     try:
         await _client().list_users()
         return _json({"status": "ok"})
-    except PracticePantherError as e:
-        return _format_error(e)
+    except PracticePantherError:
+        raise
 
 
 def main() -> None:
